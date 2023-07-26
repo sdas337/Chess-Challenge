@@ -7,7 +7,7 @@ using System.Linq;
 using System.IO;
 using System.Drawing;
 
-public class MyBot : IChessBot
+public class PriorBot : IChessBot
 {
     // Piece values: pawn, knight, bishop, rook, queen, king
     int[] pieceValues = { 82, 337, 365, 477, 1025, 0, 94, 281, 297, 512, 936, 0 };
@@ -149,7 +149,7 @@ public class MyBot : IChessBot
         5430896352595961941,
     };
 
-    public MyBot()
+    public PriorBot()
     {
         // Calculate PSTs from raw table once.
 
@@ -191,7 +191,7 @@ public class MyBot : IChessBot
             //Console.WriteLine("Depth: " + (chosenDepth) + " Best Eval: " + bestEval + " Moves " + nodes + " mps " + (nodes / Math.Max(timer.MillisecondsElapsedThisTurn, 1) * 1000).ToString());
         }
 
-        Console.WriteLine("Depth: " + (chosenDepth - 1) + " Best Eval: " + bestEval + " Moves " + nodes + " mps " + (nodes / timer.MillisecondsElapsedThisTurn * 1000).ToString());
+        //Console.WriteLine("Depth: " + (chosenDepth - 1) + " Best Eval: " + bestEval + " Moves " + nodes + " mps " + (nodes / timer.MillisecondsElapsedThisTurn * 1000).ToString());
 
 
         return moveToPlay;
@@ -199,7 +199,7 @@ public class MyBot : IChessBot
 
     int searchBoard(Board board, int depth, Timer timer, int alpha, int beta)
     {
-        if ((nodes & 2047) == 0 && timer.MillisecondsElapsedThisTurn >= timer.MillisecondsRemaining / 38) stopped = true;
+        if ((nodes & 2047) == 0 && timer.MillisecondsElapsedThisTurn >= timer.MillisecondsRemaining / 20) stopped = true;
         bool qsearch = (depth <= 0);
 
         if (qsearch)

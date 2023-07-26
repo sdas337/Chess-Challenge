@@ -29,6 +29,20 @@ namespace ChessChallenge.Application
             {
                 controller.StartNewBotMatch(ChallengeController.PlayerType.MyBot, ChallengeController.PlayerType.EvilBot);
             }
+            if (NextButtonInRow("MyBot vs PriorBot", ref buttonPos, spacing, buttonSize))
+            {
+                controller.StartNewBotMatch(ChallengeController.PlayerType.MyBot, ChallengeController.PlayerType.PriorBot);
+            }
+
+            if (NextButtonInRow("MyBot vs ChallengerBot", ref buttonPos, spacing, buttonSize))
+            { 
+                controller.StartNewBotMatch(ChallengeController.PlayerType.MyBot, ChallengeController.PlayerType.ChallengerBot);
+            }
+            if (NextButtonInRow("MyBot vs AlexBot", ref buttonPos, spacing, buttonSize))
+            {
+                controller.StartNewBotMatch(ChallengeController.PlayerType.MyBot, ChallengeController.PlayerType.AlexBot);
+            }
+
 
             // Page buttons
             buttonPos.Y += breakSpacing;
@@ -55,6 +69,10 @@ namespace ChessChallenge.Application
             {
                 FileHelper.OpenUrl("https://forms.gle/6jjj8jxNQ5Ln53ie6");
             }
+            /*if (NextButtonInRow("Fast forward", ref buttonPos, spacing, buttonSize))
+            {
+                controller.fastForward = !controller.fastForward;
+            }*/
 
             // Window and quit buttons
             buttonPos.Y += breakSpacing;
