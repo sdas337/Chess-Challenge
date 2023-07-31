@@ -34,14 +34,11 @@ namespace ChessChallenge.Application
                 controller.StartNewBotMatch(ChallengeController.PlayerType.MyBot, ChallengeController.PlayerType.PriorBot);
             }
 
-            if (NextButtonInRow("MyBot vs ChallengerBot", ref buttonPos, spacing, buttonSize))
+            if (NextButtonInRow("MyBot vs NegamaxV2", ref buttonPos, spacing, buttonSize))
             { 
-                controller.StartNewBotMatch(ChallengeController.PlayerType.MyBot, ChallengeController.PlayerType.ChallengerBot);
+                controller.StartNewBotMatch(ChallengeController.PlayerType.MyBot, ChallengeController.PlayerType.NegamaxV2);
             }
-            if (NextButtonInRow("MyBot vs AlexBot", ref buttonPos, spacing, buttonSize))
-            {
-                controller.StartNewBotMatch(ChallengeController.PlayerType.MyBot, ChallengeController.PlayerType.AlexBot);
-            }
+
 
 
             // Page buttons

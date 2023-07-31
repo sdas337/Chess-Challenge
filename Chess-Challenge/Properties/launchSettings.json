@@ -1,0 +1,16 @@
+{
+  "profiles": {
+    "WSL": {
+      "commandName": "WSL2",
+      "distributionName": ""
+    },
+    "Cutechess_MyBot": {
+      "commandName": "Project",
+      "commandLineArgs": "uci MyBot",
+      "workingDirectory": "C:\\Users\\siddh\\source\\repos\\Chess-Challenge\\bin\\Debug\\net6.0"
+    },
+    "GUI": {
+      "commandName": "Project"
+    }
+  }
+}

@@ -3,7 +3,7 @@ using System;
 
 
 //842 tokens is the goal.
-public class MyBot : IChessBot
+public class PriorBot : IChessBot
 {
     struct TT_Entry
     {

@@ -21,8 +21,7 @@ namespace ChessChallenge.Application
             MyBot,
             EvilBot,
             PriorBot,
-            ChallengerBot,
-            AlexBot
+            NegamaxV2,
         }
 
         // Game state
@@ -213,11 +212,24 @@ namespace ChessChallenge.Application
                 PlayerType.MyBot => new ChessPlayer(new MyBot(), type, GameDurationMilliseconds),
                 PlayerType.EvilBot => new ChessPlayer(new EvilBot(), type, GameDurationMilliseconds),
                 PlayerType.PriorBot => new ChessPlayer(new PriorBot(), type, GameDurationMilliseconds),
-                PlayerType.ChallengerBot => new ChessPlayer(new ChallengerBot(), type, GameDurationMilliseconds),
-                PlayerType.AlexBot => new ChessPlayer(new AlexBot(), type, GameDurationMilliseconds),
+                PlayerType.NegamaxV2 => new ChessPlayer(new NegamaxV2(), type, GameDurationMilliseconds),
                 _ => new ChessPlayer(new HumanPlayer(boardUI), type)
             };
         }
+
+        public static ChessChallenge.API.IChessBot? CreateBot(PlayerType type)
+        {
+            return type switch
+            {
+                PlayerType.MyBot => new MyBot(),
+                PlayerType.EvilBot => new EvilBot(),
+                // If you have other bot types, you can add them here as well
+                PlayerType.PriorBot => new PriorBot(),
+                PlayerType.NegamaxV2 => new NegamaxV2(),
+                _ => null
+            };
+        }
+
 
         static int GetTokenCount()
         {

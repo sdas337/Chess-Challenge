@@ -1,4 +1,7 @@
-﻿using Raylib_cs;
+﻿using ChessChallenge.API;
+using ChessChallenge.UCI;
+using Raylib_cs;
+using System;
 using System.IO;
 using System.Numerics;
 using System.Runtime.InteropServices;
@@ -10,8 +13,18 @@ namespace ChessChallenge.Application
         const bool hideRaylibLogs = true;
         static Camera2D cam;
 
-        public static void Main()
+        public static void Main(string[] args)
         {
+            Console.WriteLine(args[0]);
+            if (args.Length > 1 && args[0] == "uci")
+            {
+                int tokenCount = GetTokenCount();
+                Console.WriteLine("Current Token Count is " + tokenCount + "/1024");
+
+                StartUCI(args);
+                return;
+            }
+
             Vector2 loadedWindowSize = GetSavedWindowSize();
             int screenWidth = (int)loadedWindowSize.X;
             int screenHeight = (int)loadedWindowSize.Y;
@@ -103,8 +116,36 @@ namespace ChessChallenge.Application
             File.WriteAllText(FileHelper.PrefsFilePath, isBigWindow ? "1" : "0");
         }
 
-      
+        public static void StartUCI(string[] args)
+        {
+            ChallengeController.PlayerType player;
+            bool success = Enum.TryParse(args[1], out player);
 
+            if (!success)
+            {
+                Console.Error.WriteLine($"Failed to start bot with player type {args[1]}");
+                return;
+            }
+
+            IChessBot? bot = ChallengeController.CreateBot(player);
+            if (bot == null)
+            {
+                Console.Error.WriteLine($"Cannot create bot of type {player.ToString()}");
+                return;
+            }
+
+            UCIBot uci = new UCIBot(bot, player);
+            uci.Run();
+        }
+
+        static int GetTokenCount()
+        {
+            string path = Path.Combine(Directory.GetCurrentDirectory(), "src", "My Bot", "MyBot.cs");
+
+            using StreamReader reader = new(path);
+            string txt = reader.ReadToEnd();
+            return TokenCounter.CountTokens(txt);
+        }
     }
 
 
