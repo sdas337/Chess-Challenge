@@ -22,6 +22,7 @@ namespace ChessChallenge.Application
             EvilBot,
             PriorBot,
             NegamaxV2,
+            MessageBot,
         }
 
         // Game state
@@ -227,6 +228,7 @@ namespace ChessChallenge.Application
                 // If you have other bot types, you can add them here as well
                 PlayerType.PriorBot => new PriorBot(),
                 PlayerType.NegamaxV2 => new NegamaxV2(),
+                PlayerType.MessageBot => new MessageBot(),
                 _ => null
             };
         }

@@ -15,7 +15,6 @@ namespace ChessChallenge.Application
 
         public static void Main(string[] args)
         {
-            Console.WriteLine(args[0]);
             if (args.Length > 1 && args[0] == "uci")
             {
                 int tokenCount = GetTokenCount();
@@ -125,6 +124,9 @@ namespace ChessChallenge.Application
             {
                 Console.Error.WriteLine($"Failed to start bot with player type {args[1]}");
                 return;
+            } else
+            {
+                Console.WriteLine("Created a bot with player type " + args[1]);
             }
 
             IChessBot? bot = ChallengeController.CreateBot(player);
@@ -144,7 +146,7 @@ namespace ChessChallenge.Application
 
             using StreamReader reader = new(path);
             string txt = reader.ReadToEnd();
-            return TokenCounter.CountTokens(txt);
+            return TokenCounter.CountTokens(txt).totalCount;
         }
     }
 
