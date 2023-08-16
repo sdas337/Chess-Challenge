@@ -1,5 +1,4 @@
 ﻿using ChessChallenge.Chess;
-using ChessChallenge.Example;
 using Raylib_cs;
 using System;
 using System.IO;
@@ -22,7 +21,8 @@ namespace ChessChallenge.Application
             EvilBot,
             PriorBot,
             NegamaxV2,
-            MessageBot,
+            TyrantBot,
+            V1Bot,
         }
 
         // Game state
@@ -228,7 +228,8 @@ namespace ChessChallenge.Application
                 // If you have other bot types, you can add them here as well
                 PlayerType.PriorBot => new PriorBot(),
                 PlayerType.NegamaxV2 => new NegamaxV2(),
-                PlayerType.MessageBot => new MessageBot(),
+                PlayerType.TyrantBot => new TyrantBot(),
+                PlayerType.V1Bot => new V1Bot(),
                 _ => null
             };
         }
