@@ -49,8 +49,8 @@ public class TyrantBot : IChessBot
                 beta += 65;
             else
             {
-                Console.WriteLine("hit depth: " + depth + " in " + searchTimer.MillisecondsElapsedThisTurn + "ms with an eval of " + // #DEBUG
-                    eval + " centipawns"); // #DEBUG
+                /*Console.WriteLine("hit depth: " + depth + " in " + searchTimer.MillisecondsElapsedThisTurn + "ms with an eval of " + // #DEBUG
+                    eval + " centipawns"); // #DEBUG*/
 
                 // Set up window for next search
                 alpha = eval - 20;

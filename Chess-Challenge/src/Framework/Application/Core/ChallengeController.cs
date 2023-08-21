@@ -215,6 +215,7 @@ namespace ChessChallenge.Application
                 PlayerType.EvilBot => new ChessPlayer(new EvilBot(), type, GameDurationMilliseconds),
                 PlayerType.PriorBot => new ChessPlayer(new PriorBot(), type, GameDurationMilliseconds),
                 PlayerType.NegamaxV2 => new ChessPlayer(new NegamaxV2(), type, GameDurationMilliseconds),
+                PlayerType.TyrantBot => new ChessPlayer(new TyrantBot(), type, GameDurationMilliseconds),
                 _ => new ChessPlayer(new HumanPlayer(boardUI), type)
             };
         }

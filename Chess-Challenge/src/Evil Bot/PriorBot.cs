@@ -2,25 +2,47 @@
 
 using ChessChallenge.API;
 using System;
+using static System.Math;
+#if STATS
 using System.Linq;
+#endif
 
 
-// Current Token Count is 871
-// With PVS (36.8 +- 15)                                52 Tokens
-// Check Extension (46 +- 23)                           8 Tokens
-// Null Move Pruning (102 +- 36.8)                      61 Tokens
+//  -12 under Tyrant V6
+// 983 Tokens Base
 
-// History Moves (76 +- 30.9)                           66 Tokens
-// RFP  (24.0 +- 15.7)                                  30 Tokens
+// TO-DO Later (round 2):
+// Aspiration Windows               40 Tokens
+// Killer Moves                     22 Tokens   (17 +- 14.6)
+
+// To-do Additions
+// Futility Pruning                 41 Tokens   (48.1 +- 23.7)
+// LMP                              23 Tokens
+
+// Span Test                        12 Tokens
+
+// To-Do:
+// Tune RFP
+// Tune FP
+// Tune LMR
+// Save Tokens
+//      -> Try Tyrant's Pesto Tables
+
+
+
 
 public class PriorBot : IChessBot
 {
     // 0 is INVALID, 1 is LOWERBOUND, 2 is UPPERBOUND, 4 is EXACT for bound
     record struct TT_Entry(ulong ZobristKey, Move move, int depth, int score, int bound);
 
-    TT_Entry[] transpositionTable = new TT_Entry[0x100000];
+    TT_Entry[] transpositionTable = new TT_Entry[0x400000];
 
     int[,,] historyTable;
+    Move[] killers = new Move[1024];
+
+    //int[] moveScores = new int[218];
+
 
     Board currentBoard;
     Timer currentTimer;
@@ -30,6 +52,7 @@ public class PriorBot : IChessBot
 
 #if STATS
     int nodes, lookups, ttEntryCount, bestEval = 0;
+    int maxHistory = 0, maxPlyFromRoot = 0;
 #endif
 
     public Move Think(Board board, Timer timer)
@@ -44,7 +67,7 @@ public class PriorBot : IChessBot
 
         currentBoard = board;
         currentTimer = timer;
-        moveToPlay = Move.NullMove;
+        moveToPlay = board.GetLegalMoves()[0];
         historyTable = new int[2, 7, 64];
 
         maxTimeMilliSeconds = timer.MillisecondsRemaining / 30;
@@ -52,34 +75,61 @@ public class PriorBot : IChessBot
         for (chosenDepth = 1; ;)
         {
 
-            int tmp = searchBoard(chosenDepth++, 0, -30000000, 30000000, true);
+            int eval = searchBoard(chosenDepth++, 0, -30000000, 30000000, true);
 
             if (timer.MillisecondsElapsedThisTurn >= maxTimeMilliSeconds) break;
 
 #if STATS
-            bestEval = tmp;
+            bestEval = eval;
             DebugPrints();
 #endif
-        }
 
-        return moveToPlay.IsNull ? board.GetLegalMoves()[0] : moveToPlay;
+        }
+#if STATS
+        Console.WriteLine("Max history Value is: " + maxHistory);
+#endif
+
+
+        return moveToPlay;
     }
 
     int searchBoard(int depth, int plyFromRoot, int alpha, int beta, bool nullMovePruningAllowed = true)
     {
+
+        // Silly local method to save tokens
+        int Search(int newAlpha, int R = 1, bool nullMovePruning = true) => -searchBoard(depth - R, plyFromRoot + 1, -newAlpha, -alpha, nullMovePruning);
+
         ulong currentKey = currentBoard.ZobristKey;
-        int bestScore = -900000, newDepth = depth - 1, colorMoving = currentBoard.IsWhiteToMove ? 1 : 0, moveCount = 0;
-        bool qsearch = depth <= 0, notRoot = plyFromRoot > 0, pvNode = beta - alpha > 1;
+
+        TT_Entry ttEntry = transpositionTable[currentKey % 0x400000];
+
+
+        int bestScore = -900000,
+            historyIndex = plyFromRoot % 2,
+            moveCount = 0,
+            alphaOrig = alpha,
+            ttEntryBound = ttEntry.bound,
+            ttEntryScore = ttEntry.score,
+            moveScore;
+
+        bool notRoot = plyFromRoot > 0,
+            pvNode = beta - alpha > 1,
+            inCheck = currentBoard.IsInCheck(),
+            futilePruning;
+
+        //Extension Checks      // Move Check 
+        if (inCheck) depth++;
+
+        bool qsearch = depth <= 0;
 
         if (notRoot && currentBoard.IsRepeatedPosition())
             return 0;
 
-        TT_Entry ttEntry = transpositionTable[currentKey % 0x100000];
 
         if (notRoot && ttEntry.ZobristKey == currentKey && ttEntry.depth >= depth && (
-            ttEntry.bound == 3 // exact score
-                || ttEntry.bound == 2 && ttEntry.score >= beta // lower bound, fail high
-                || ttEntry.bound == 1 && ttEntry.score <= alpha // upper bound, fail low
+            ttEntryBound == 3 // exact score
+                || ttEntryBound == 2 && ttEntryScore >= beta // lower bound, fail high
+                || ttEntryBound == 1 && ttEntryScore <= alpha // upper bound, fail low
         ))
 #if Stats
         {
@@ -96,99 +146,91 @@ public class PriorBot : IChessBot
         {
             bestScore = eval;
             if (bestScore >= beta) return bestScore;
-            alpha = Math.Max(alpha, bestScore);
+            alpha = Max(alpha, bestScore);
         }
-
-        // Shorter form of moveOrdering. -35 tokens, -25.1 +- 19.7 elo (15 of that elo is due to null move pruning in qsearch)
-        /*var allMoves = currentBoard.GetLegalMoves(qsearch)?.OrderByDescending(move =>
+        else if (!pvNode && !inCheck)      // Pruning Techniques
         {
-            // Transposition Table Match
-            int moveScore = move == ttEntry.move ? 1000000 :
-
-            // MVVLVA
-            move.IsCapture ? 500 * pieceValues[(int)move.CapturePieceType] - (int)move.MovePieceType : 0;
-
-            // History Heuristic
-            return moveScore + historyTable[colorMoving, (int)move.MovePieceType, move.TargetSquare.Index];
-        }).ToArray();
-        if (!qsearch && allMoves.Length == 0) return currentBoard.IsInCheck() ? plyFromRoot - 900000: 0;*/
-
-        Move[] allMoves = currentBoard.GetLegalMoves(qsearch);
-        int[] moveScores = new int[allMoves.Length];
-
-        if (!qsearch && allMoves.Length == 0) return currentBoard.IsInCheck() ? plyFromRoot - 900000 : 0;
-
-        for (int i = 0; i < allMoves.Length; i++)
-        {
-            Move currentMove = allMoves[i];
-            if (currentMove == ttEntry.move)
-                moveScores[i] -= 1000000;
-            else if (currentMove.IsCapture)
-                moveScores[i] -= 500 * pieceValues[(int)currentMove.CapturePieceType] - (int)currentMove.MovePieceType;
-            moveScores[i] -= historyTable[colorMoving, (int)currentMove.MovePieceType, currentMove.TargetSquare.Index];
-        }
-        Array.Sort(moveScores, allMoves);
-
-
-        Move currentBestMove = Move.NullMove;
-        int alphaOrig = alpha, moveScore;
-
-        //Extension Checks      // Move Check 
-        if (currentBoard.IsInCheck()) newDepth++;
-
-        //Pruning Techniques
-        //Needs to not be on PVS. Preferred not in check
-
-        //Doing Null Move Pruning in Q-search gains 15 elo
-        if (!pvNode)
-        {
-            int rfPruningMargin = 80 + 110 * depth;
-            if (!qsearch && depth <= 5 && eval - rfPruningMargin >= beta)
+            int rfPruningMargin = 95 * depth;
+            if (depth <= 5 && eval - rfPruningMargin >= beta)
                 return eval - rfPruningMargin;
-            if (depth > 1 && nullMovePruningAllowed && currentBoard.TrySkipTurn())
+            if (nullMovePruningAllowed && depth > 1 && currentBoard.TrySkipTurn())
             {
-                int nullMoveScore = -searchBoard(depth - 3 - depth / 5, plyFromRoot + 1, -beta, -alpha, false);
+                int nullMoveScore = Search(beta, 3 + depth / 5, false);
                 currentBoard.UndoSkipTurn();
 
                 if (nullMoveScore >= beta) return nullMoveScore;
             }
         }
 
-        //bool futile = depth <= 8 && !pvNode && (eval + 0 + 0 * depth) < alpha;
+        // 12 Tokens less than Span
+        Move[] allMoves = currentBoard.GetLegalMoves(qsearch && !inCheck);
+        int[] moveScores = new int[allMoves.Length];
 
-        for (; moveCount < allMoves.Length; moveCount++)
+
+        foreach (Move move in allMoves)
+            moveScores[moveCount++] = -(move == ttEntry.move ? 33554432 :
+
+            // MVVLVA
+            move.IsCapture ? 2097152 * (int)move.CapturePieceType - (int)move.MovePieceType :
+
+            //Killers
+            killers[plyFromRoot] == move ? 1048576 :
+
+            // History Heuristic
+            historyTable[historyIndex, (int)move.MovePieceType, move.TargetSquare.Index]);
+        Array.Sort(moveScores, allMoves);
+
+        // Generate appropriate moves depending on whether we're in QSearch
+
+        /*Span<Move> allMoves = stackalloc Move[218];
+        currentBoard.GetLegalMovesNonAlloc(ref allMoves, qsearch && !inCheck);
+
+        // Order moves in reverse order -> negative values are ordered higher hence the strange equations
+        foreach (Move move in allMoves)
+            moveScores[moveCount++] = -(
+            // Hash move
+            move == ttEntry.move ? 33554432 :
+            // MVVLVA
+            move.IsCapture ? 2097152 * (int)move.CapturePieceType - (int)move.MovePieceType :
+
+            //Killers
+            killers[plyFromRoot] == move ? 1048576 :
+
+            // History Heuristic
+            historyTable[historyIndex, (int)move.MovePieceType, move.TargetSquare.Index]);
+
+        moveScores.AsSpan(0, allMoves.Length).Sort(allMoves);*/
+
+        Move currentBestMove = Move.NullMove;
+        futilePruning = depth <= 8 && (eval + 150 * depth) <= alpha;
+
+
+        moveCount = 0;
+        foreach (Move move in allMoves)
         {
-            if (currentTimer.MillisecondsElapsedThisTurn >= maxTimeMilliSeconds) return 999999;
+            if (currentTimer.MillisecondsElapsedThisTurn >= maxTimeMilliSeconds) return 99999999;
 
-            Move move = allMoves[moveCount];
+            bool importantMoves = move.IsCapture || move.IsPromotion;
 
-            //bool importantMoves = !qsearch && (move.IsCapture || move.IsPromotion);
             // Extended Futility Pruning
-            /*if (futile && !importantMoves)
-                continue;*/
+            if (futilePruning && !importantMoves && moveCount > 0)
+                break;
 
             currentBoard.MakeMove(move);
-            bool fullSearch = qsearch || moveCount == 0;
 
 #if STATS
             nodes++;
 #endif
 
-            // Silly local method to save tokens
-            int Search(int newAlpha) => -searchBoard(newDepth, plyFromRoot + 1, -newAlpha, -alpha);
-
-        Search:
-            if (!fullSearch)
-                moveScore = Search(alpha + 1);
-            else
+            if (moveCount == 0 || qsearch) moveScore = Search(beta);
+            else if ((moveScore = moveCount < 7 || depth <= 2 ?
+                                    alpha + 1 :
+                                    Search(alpha + 1, 3)) > alpha &&
+                (moveScore = Search(alpha + 1)) > alpha)
                 moveScore = Search(beta);
-            if (!fullSearch && moveScore > alpha)
-            {
-                fullSearch = true;
-                goto Search;
-            }
 
             currentBoard.UndoMove(move);
+
 
 #if Stats
             if(plyFromRoot == 0)
@@ -204,14 +246,25 @@ public class PriorBot : IChessBot
 
                 if (plyFromRoot == 0) moveToPlay = move;
 
-                alpha = Math.Max(alpha, moveScore);
+                alpha = Max(alpha, moveScore);
 
                 if (alpha >= beta)
                 {
-                    if (!qsearch && !move.IsCapture) historyTable[colorMoving, (int)move.MovePieceType, move.TargetSquare.Index] += depth * depth;
+                    if (!qsearch && !move.IsCapture)
+                    {
+                        historyTable[historyIndex, (int)move.MovePieceType, move.TargetSquare.Index] += depth * depth;
+                        killers[plyFromRoot] = move;
+
+#if STATS
+                        maxHistory = Max(maxHistory, historyTable[historyIndex, (int)move.MovePieceType, move.TargetSquare.Index]);
+#endif
+                    }
+
                     break;
                 }
             }
+
+            moveCount++;
 
         }
 
@@ -220,9 +273,12 @@ public class PriorBot : IChessBot
             ttEntryCount++;
         }
 #endif
+
+        if (!qsearch && allMoves.Length == 0) return inCheck ? plyFromRoot - 900000 : 0;
+
         int boundType = bestScore >= beta ? 2 : bestScore > alphaOrig ? 3 : 1;
 
-        transpositionTable[currentKey % 0x100000] = new TT_Entry(currentKey, currentBestMove, depth, bestScore, boundType);
+        transpositionTable[currentKey % 0x400000] = new TT_Entry(currentKey, currentBestMove, depth, bestScore, boundType);
 
         return bestScore;
 
@@ -290,7 +346,7 @@ public class PriorBot : IChessBot
         string nodesString = "\x1b[37mnodes\x1b[35m " + nodes + "\x1b[37m";
         nodesString += string.Concat(Enumerable.Repeat(" ", 29 - nodesString.Length));
 
-        string lookupsString = "\x1b[37mlookups\x1b[34m " + lookups + "\x1b[37m";
+        string lookupsString = "\x1b[37mnps\x1b[34m " + (nodes / Max(1, currentTimer.MillisecondsElapsedThisTurn)) * 1000 + "\x1b[37m";
         lookupsString += string.Concat(Enumerable.Repeat(" ", 32 - lookupsString.Length));
 
         string tablesizeString = "tablesize\x1b[31m " + ttEntryCount + "\x1b[37m";

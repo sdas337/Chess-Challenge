@@ -473,7 +473,7 @@ namespace ChessChallenge.Chess
         public void LoadPosition(string fen)
         {
             LoadPosition(FenUtility.PositionFromFen(fen));
-            //LoadPosition(FenUtility.PositionFromFen("r1bq1rk1/pp1nbpp1/2p2n1p/3p4/3P3B/2NBPN2/PP3PPP/R2QK2R w - - 1 11"));
+            //LoadPosition(FenUtility.PositionFromFen("r1bq1rk1/pppnppbp/1n4p1/8/3P4/1QN1PN2/PP2BPPP/R1B1K2R w KQkq - 0 1"));
         }
 
         public void LoadPosition(FenUtility.PositionInfo posInfo)
